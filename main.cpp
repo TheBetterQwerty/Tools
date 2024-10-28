@@ -29,7 +29,7 @@ std::string aes_keygen() {
     char input[33];
     const char choices[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_+/";
     int i = 0;
-    while ( i < 32 ){
+    while ( i < 33 ){
         int index = rand() % (sizeof(choices) - 1);
         input[i] = choices[index];
         i++;
