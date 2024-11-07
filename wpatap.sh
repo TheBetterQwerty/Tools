@@ -1,8 +1,13 @@
 #!/bin/bash
 
+red="\e[31m"
+green="\e[32m"
+white="\e[1;37m"
+default="\e[0m"
+
 function error_handle(){
     if [[ $? -ne 0 ]]; then
-        echo -e "\e[31m[!] $1\e[0m"
+        echo -e "$red[!] $1 $default"
         exit 1
     fi
 }
@@ -25,7 +30,7 @@ function monitor_mode_off(){
     sudo iwconfig "$1" mode managed
     error_handle "Error during putting $1 in managed mode!!"
     sudo ifconfig "$1" up
-    echo -e "\e[32m[*] Starting Network Manager[0m"
+    echo -e "$green[*] Starting Network Manager $default"
     sudo systemctl start NetworkManager
     error_handle "Error Starting Network Manager !!"
     echo "Done!!"
@@ -58,11 +63,11 @@ function interface1(){
 }
 
 if [[ $EUID -ne 0 ]]; then
-    echo -e "\e[31mPlease run script as root\e[0m "
+    echo -e "$red Please run script as root $default"
     exit 1
 fi
 
-echo -e "\e[1;37m ******************** WIFI WPA TAPPER *****************************\e[0m "
+echo -e "$white ******************** WIFI WPA TAPPER ***************************** $default"
 
 echo "********* INTERFACES AVAILABLE ***********"
 ifaces=($(interface1))
@@ -77,15 +82,15 @@ read -p "Choose the interface number -> " ch
 interface=${ifaces[$ch-1]}
 trap "monitor_mode_off '$interface'" EXIT
 
-echo -e "\e[32m[*] Killing All the conflicting process\e[0m"
+echo -e "${green}[*] Killing All the conflicting process${default}"
 kill_process
 
-echo -e "\e[32m[*] Putting $interface in monitor mode\e[0m"
+echo -e "${green}[*] Putting $interface in monitor mode${default}"
 monitor_mode_on "$interface"
 
 access_point_MAC "$interface"
 
-echo -e "\e[32m[*] Preparing capture folder\e[0m"
+echo -e "${green}[*] Preparing capture folder${default}"
 read -p "Enter Wi-Fi name (SSID) -> " ssid
 ssid_cleaned=$(echo "$ssid" | tr ' ' '_')
 file_dir="/home/qwerty/captures/$ssid_cleaned"
@@ -103,11 +108,11 @@ window1 "$file" "$channel" "$bssid" "$interface"
 
 read -p "Do you wish to do a DDOS attack [N/Y] ?" choice 
 if [[ "$choice" != 'N' && "$choice" != 'n' ]]; then
-    echo -e "\e[32m[*] Sending Deauthentication Packets to $bssid From $interface\e[0m "
+    echo -e "${green}[*] Sending Deauthentication Packets to $bssid From $interface $default"
     deauthentication "$bssid" "$interface"
 else
-    echo -e "\e[31m[!] No Deauth Packets sent "
+    echo -e "$red[!] No Deauth Packets sent $default"
 fi
 
-echo -e "\e[32m[*] Putting $interface in managed mode\e[0m "
+echo -e "$green[*] Putting $interface in managed mode $default"
 monitor_mode_off "$interface"
