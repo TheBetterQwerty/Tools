@@ -18,6 +18,17 @@ def url_dorking():
     dir_list["HTA access"] = f'{base_url}site:{url}+inurl:"/phpinfo.php"%20|%20inurl:".htaccess"'
     dir_list["Robots.txt"] = f"{base_url}site:{url}/robots.txt"
 
+def person_dorking():
+    try:
+        name , surname = input("Enter Full name -> ").split()
+        keywords = input("Enter keywords sep space : ").split()
+    except:
+        exit()
+    dork = ""
+    for key in keywords:
+        dork += f'+"{key}"'
+    print(f'{base_url}"{name}"+"{surname}"{dork}')
+
 if __name__ == "__main__":
     banner()
     ch = int(input(" Url Dorking or Person Dorking(1/0) -> "))
@@ -27,6 +38,6 @@ if __name__ == "__main__":
         for i,j in dir_list.items():
             print(f"{i} : {j}")
     elif ch == 0:
-        print("Comming soon")
+        person_dorking() 
     else:
         print("Not a valid choice")
