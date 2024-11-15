@@ -34,7 +34,7 @@ def leet_pass():
             passwords1.add(leet_word + number)
             passwords1.add(number + leet_word)
 
-    return list(passwords1)[1000]
+    return list(passwords1)[:1000]
 
 
 def passwords(use_leet=True):
@@ -66,17 +66,18 @@ def passwords(use_leet=True):
             passwords.add(f"{info['name'].capitalize()}{info['surname']}{sp}{info['year'][-1]}")
             passwords.add(f"{info['name'].capitalize()}{info['surname']}{sp}{info['date']}{info['month']}{info['year'][-1]}")
             passwords.add(f"{info['name'].capitalize()}{sp}{info['date']}{info['month']}{info['year'][-1]}")
-            
+
         if int(info['month']) < 10 :
             passwords.add(f"{info['name']}{sp}{info['date']}0{info['month']}")
             passwords.add(f"{info['name'].capitalize()}{sp}{info['date']}0{info['month']}")
         else:
             passwords.add(f"{info['name'].capitalize()}{sp}{info['date']}{info['month']}")
             passwords.add(f"{info['name']}{sp}{info['date']}{info['month']}")
+    if info.get("ph_no" , None):
+        passwords.add(f"{(info['ph_no'])}")
+        passwords.add(f"{(info['ph_no'])[:6]}")
+        passwords.add(f"{(info['ph_no'])[6:]}")
 
-    passwords.add(f"{(info['ph_no'])}")
-    passwords.add(f"{(info['ph_no'])[:6]}")
-    passwords.add(f"{(info['ph_no'])[6:]}")
     passwords.add(f"{info['date']}{info['date']}")
     passwords.add(f"{info['date']}{info['month']}")
     passwords.add(f"{info['date']}{info['year']}")
@@ -180,10 +181,11 @@ def get_info():
     info["date"] = date
     info["month"] = month
     info["year"] = year
-    info["ph_no"] = phone_no
+    if phone_no:
+        info["ph_no"] = phone_no
     if nickname :
         info["nickname"] = nickname
-    
+
     print("[*] Enter other keywords separated by space ")
     lines = input("-> ").split()
 
