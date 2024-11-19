@@ -6,16 +6,18 @@ import argparse
 import hashlib
 from Crypto.Cipher import AES
 from Crypto.Util.Padding import pad, unpad
+from Crypto.Random import get_random_bytes
 
 def encrypt(key, text):
-    cipher = AES.new(key,AES.MODE_ECB)
+    iv = get_random_bytes(AES.block_size)
+    cipher = AES.new(key,AES.MODE_CBC , iv)
     padded_text = pad(text, AES.block_size)
     encryption = base64.b64encode(cipher.encrypt(padded_text))
-    return encryption
+    return encryption, iv
 
-def decrypt(key, encrypted_text):
+def decrypt(key, encrypted_text, iv):
     try:
-        cipher = AES.new(key , AES.MODE_ECB)
+        cipher = AES.new(key , AES.MODE_CBC , iv)
         decrypted = cipher.decrypt(base64.b64decode(encrypted_text))
         decrypted_text = unpad(decrypted, AES.block_size)
         return decrypted_text
@@ -35,16 +37,17 @@ def encryptor(file , key):
     with open(file , "rb") as f:
         file_contents = f.read()
 
-    encrypted_file_contents = encrypt(key , file_contents)
+    encrypted_file_contents, iv = encrypt(key , file_contents)
 
     with open(file , "wb") as f:
-        f.write(encrypted_file_contents)
+        f.write(iv + encrypted_file_contents)
 
 def decryptor(file , key):
     with open(file , "rb") as f:
         file_contents = f.read()
-
-    decrypted_contents = decrypt(key, file_contents)
+    iv = file_contents[:AES.block_size]
+    file_contents = file_contents[AES.block_size:]
+    decrypted_contents = decrypt(key, file_contents, iv)
 
     with open(file , "wb") as f:
         f.write(decrypted_contents)
